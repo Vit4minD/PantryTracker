@@ -38,7 +38,7 @@ export default function Home() {
         createdAt: new Date(),
         inventory: [],
       });
-      router.push('/inventory');
+      router.push('/');
     } catch (error) {
       console.error("Registration error: ", error); 
       setError('Failed to register. Please check your email and password.');
