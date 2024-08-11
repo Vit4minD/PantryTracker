@@ -14,25 +14,23 @@ export default function Inventory() {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [adding, setAdding] = useState(0)
     const router = useRouter();
 
     useEffect(() => {
         const fetchItems = async () => {
             const user = auth.currentUser;
-            if (!user) {
-                router.push('/');
-                return;
-            }
-
             setLoading(true);
             try {
-                const userInventoryRef = collection(firestore, 'users', user.uid, 'inventory');
-                const q = searchQuery
-                    ? query(userInventoryRef, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'), orderBy('name'))
-                    : query(userInventoryRef, orderBy('createdAt', 'desc'));
-                const querySnapshot = await getDocs(q);
-                const itemsArray = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setItems(itemsArray);
+                if (user) {
+                    const userInventoryRef = collection(firestore, 'users', user.uid, 'inventory');
+                    const q = searchQuery
+                        ? query(userInventoryRef, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'), orderBy('name'))
+                        : query(userInventoryRef, orderBy('createdAt', 'desc'));
+                    const querySnapshot = await getDocs(q);
+                    const itemsArray = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setItems(itemsArray);
+                }
             } catch (error) {
                 setError('Error fetching items.');
             } finally {
@@ -41,9 +39,34 @@ export default function Inventory() {
         };
 
         fetchItems();
-    }, [router, searchQuery]);
+    }, []);
+
+    useEffect(() => {
+        const fetchItems = async () => {
+            const user = auth.currentUser;
+            setLoading(true);
+            try {
+                if (user) {
+                    const userInventoryRef = collection(firestore, 'users', user.uid, 'inventory');
+                    const q = searchQuery
+                        ? query(userInventoryRef, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'), orderBy('name'))
+                        : query(userInventoryRef, orderBy('createdAt', 'desc'));
+                    const querySnapshot = await getDocs(q);
+                    const itemsArray = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setItems(itemsArray);
+                }
+            } catch (error) {
+                setError('Error fetching items.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchItems();
+    }, [router, searchQuery, adding]);
 
     const handleAddItem = async () => {
+        setAdding(adding+1)
         const user = auth.currentUser;
         if (!user) {
             router.push('');

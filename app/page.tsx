@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { auth, firestore } from '@/firebase/config';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -11,8 +11,19 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false); 
+  const [isRegistering, setIsRegistering] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // Redirect if the user is already logged in
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      if (user) {
+        router.push('/inventory');
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup subscription on component unmount
+  }, [router]);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -21,10 +32,11 @@ export default function Home() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/inventory');
     } catch (error) {
-      console.error("Login error: ", error); 
+      console.error("Login error: ", error);
       setError('Failed to login. Please check your email and password.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleRegister = async () => {
@@ -33,18 +45,24 @@ export default function Home() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      await setDoc(doc(firestore, 'users', user.uid), {
-        email: user.email,
-        createdAt: new Date(),
-        inventory: [],
-      });
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/inventory');
+      if (user) {
+        await setDoc(doc(firestore, 'users', user.uid), {
+          email: user.email,
+          createdAt: new Date(),
+          inventory: [],
+        });
+        // Automatically sign in the user after registration
+        await signInWithEmailAndPassword(auth, email, password);
+        router.push('/inventory');
+      } else {
+        throw new Error('User creation failed.');
+      }
     } catch (error) {
-      console.error("Registration error: ", error); 
+      console.error("Registration error: ", error);
       setError('Failed to register. Please check your email and password.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
